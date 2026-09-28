@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import { ChevronRight, Copy, Globe2, HelpCircle, Minus, Square, Terminal, Wifi } from 'lucide-react'
 
 const initialLines = [
@@ -19,16 +21,49 @@ const initialLines = [
 export default function OpenConnectTerminal() {
   const [lines, setLines] = useState(initialLines)
   const [input, setInput] = useState('')
+  const [recipient, setRecipient] = useState('lex')
+  const incoming = useQuery(api.messages.listForRecipient, { recipient: 'you' }) ?? []
+  const sendMessage = useMutation(api.messages.send)
+  const ensureUser = useMutation(api.messages.ensureUser)
 
-  function runCommand(command: string) {
+  useEffect(() => {
+    setLines((current) => {
+      const liveLines = incoming.map((message) => ({
+        type: 'body',
+        text: `${message.sender} → you  ·  ${message.body}`,
+      }))
+      return [...current.filter((line) => !line.text.startsWith('lex → you')), ...liveLines]
+    })
+  }, [incoming])
+
+  async function deliverMessage(target: string, body: string) {
+    await ensureUser({ handle: 'you', displayName: 'you' })
+    await ensureUser({ handle: target, displayName: target })
+    await sendMessage({ sender: 'you', recipient: target, body })
+  }
+
+  async function runCommand(command: string) {
     const clean = command.trim()
     if (!clean) return
     const next = [...lines, { type: 'prompt', text: `you@openconnect:~$ ${clean}` }]
-    if (clean === 'help') next.push({ type: 'body', text: 'connect <name> · join <channel> · send <message> · who · clear · exit' })
-    else if (clean === 'who') next.push({ type: 'body', text: '4,812 people online across 96 countries' })
+    if (clean === 'help') next.push({ type: 'body', text: 'connect <name> · send <name> <message> · join <channel> · who · clear · exit' })
+    else if (clean === 'who') next.push({ type: 'body', text: 'lex  relay  ·  online  ·  ready to receive' })
     else if (clean === 'clear') setLines([])
-    else if (clean.startsWith('send ')) next.push({ type: 'body', text: `message sent to #global: ${clean.slice(5)}` })
-    else if (clean.startsWith('join ')) next.push({ type: 'system', text: `You joined ${clean.slice(5)}` })
+    else if (clean.startsWith('send ')) {
+      const [, target = recipient, ...messageParts] = clean.split(' ')
+      const body = messageParts.join(' ').trim()
+      if (!body) next.push({ type: 'error', text: 'usage: send <name> <message>' })
+      else {
+        try {
+          await deliverMessage(target, body)
+          setRecipient(target)
+          next.push({ type: 'success', text: `message sent to ${target} · live relay confirmed` })
+        } catch {
+          next.push({ type: 'error', text: 'relay unavailable: message was not sent' })
+        }
+      }
+    } else if (clean.startsWith('join ')) next.push({ type: 'system', text: `You joined ${clean.slice(5)}` })
+    else if (clean === 'connect lex') next.push({ type: 'success', text: 'Connected to lex · live second-user relay active' })
     else next.push({ type: 'error', text: `command not found: ${clean}. Try 'help'.` })
     setLines(next)
     setInput('')

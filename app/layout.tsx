@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import ConvexProviderWrapper from '@/components/convex-provider'
 
 export const metadata: Metadata = {
   title: 'OpenConnect — messages without borders',
@@ -41,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <ConvexProviderWrapper>
+          {children}
+        </ConvexProviderWrapper>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

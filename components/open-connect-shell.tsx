@@ -103,5 +103,3 @@ export function OpenConnectShell() {
 
 export default OpenConnectShell
 
-EOF
-
