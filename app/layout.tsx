@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'OpenConnect — messages without borders',
+  description: 'A text-only global network for sending messages to anyone, anywhere.',
   generator: 'v0.app',
   icons: {
     icon: [
